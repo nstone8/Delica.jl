@@ -2,3 +2,9 @@ name = "Delica"
 uuid = "12514ac0-2501-4d25-a658-60c223cc758c"
 authors = ["Nick Stone <nicholasestone@proton.me>"]
 version = "0.1.0"
+
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+Tessen = "075f01f5-5a08-42fe-8034-8ba17c561f6c"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
