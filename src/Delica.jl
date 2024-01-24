@@ -2,7 +2,7 @@ module Delica
 
 using Unitful, Tessen, Statistics, LinearAlgebra
 
-export polycontour, sectorcontour
+export polycontour, sectorcontour, box
 
 """
 ```julia
@@ -162,6 +162,55 @@ function sectorcontour(c::Vector{<:Unitful.Length},r1::Unitful.Length,r2::Unitfu
     end
     #make our closed contour
     Contour(vcat(mainarcs,caps))
+end
+
+"""
+```julia
+box(length, width, height, dslice;
+    [chamfer,fillet])
+```
+Build a 3D box with the provided dimensions. `dslice` is the maximum
+allowable slicing distance (the number of required layers and lines
+will be rounded up). The dimension corresponding to `length` will be
+along the x axis. `chamfer` should be a matrix with size (2,2)
+specifying the angle with which the edges of the box should be tapered.
+chamfer[1,:] specifies tapering normal to the 'length' dimension, chamfer[2,:]
+specifies tapering normal to `width`. If `chamfer` is provided the box has a
+crossection of ``length × width`` at the z coordinate corresponding to
+the center of the object. If `fillet` is provided, each crossection is filleted.
+This function will build a box centered on `[0,0,0]`. `Tessen.rotate` and
+`Tessen.translate` can be used to make new objects with the same dimensions in
+different locations.
+"""
+function box(length::Unitful.Length, width::Unitful.Length,
+             height::Unitful.Length,dslice::Unitful.Length;
+             chamfer=zeros(Float64,2,2),fillet = 0u"µm")
+    @assert size(chamfer) == (2,2)
+    #get the z position of all of our layers
+    numz = ceil(Int,height/dslice) #minimum value for dslice
+    zpos=range(-height/2,
+               height/2, length = numz) |> collect
+    #build all of the slices
+    slices = map(1:Base.length(zpos)) do i
+        #apply the chamfer
+        zoffset=zpos[i]
+        #amount of material added to each edge
+        #negative sign so positive chamfers correspond to shapes
+        #without overhang
+        added = -1*(zoffset * tan.(chamfer))
+        #the change in the center of the crosssection
+        center = (added[:,2] - added[:,1]) / 2
+        (lprime,wprime) = [length,width] + sum(added,dims=2)
+        #calculate our corner positions
+        rawcorners = [[-lprime/2, -wprime/2],
+                      [lprime/2,  -wprime/2],
+                      [lprime/2,  wprime/2],
+                      [-lprime/2, wprime/2]]
+        corners = [rc + center for rc in rawcorners]
+        thisslice = Slice([polycontour(corners,fillet)])
+        (zpos[i] => thisslice)
+    end
+    Block(slices...)
 end
 
 end # module Delica
